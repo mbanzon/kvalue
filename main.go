@@ -2,12 +2,25 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 )
 
+const (
+	defaultPort = 8080
+
+	writeKeyEnvironment = "KVALUE_WRITE_KEY"
+)
+
 func main() {
+	port := flag.Int("port", defaultPort, "port to listen on")
+	flag.Parse()
+
+	writeKey := getEnvironment()
+
 	values := make(map[string]json.RawMessage)
 
 	// load values from file
@@ -42,8 +55,14 @@ func main() {
 		}
 	}()
 
-	err = http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	err = http.ListenAndServe(fmt.Sprintf(":%d", *port), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
+			// check if write key is correct
+			if r.Header.Get("Authorization") != writeKey {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+
 			// get key from query parameter
 			key := r.URL.Query().Get("key")
 			// check if key is empty
@@ -56,7 +75,8 @@ func main() {
 			decoder := json.NewDecoder(r.Body)
 			err := decoder.Decode(&tmp)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest) // TODO: fix message
+				log.Println("error decoding body:", err)
+				http.Error(w, "error decoding body", http.StatusBadRequest)
 				return
 			}
 
@@ -87,4 +107,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func getEnvironment() string {
+	return os.Getenv(writeKeyEnvironment)
 }
