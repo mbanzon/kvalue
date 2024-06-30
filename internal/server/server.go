@@ -115,7 +115,7 @@ func createMainHandler(getHandler, saveHandler http.HandlerFunc) http.HandlerFun
 
 func createServerStarter(getHandler, saveHandler http.HandlerFunc, port int) func() error {
 	return func() error {
-		return http.ListenAndServe(fmt.Sprintf(":%d", port), createMainHandler(getHandler, saveHandler))
+		return http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), createMainHandler(getHandler, saveHandler))
 	}
 }
 
